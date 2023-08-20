@@ -1,0 +1,26 @@
+FROM public.ecr.aws/lambda/provided:al2 as LLAMA_BASE
+
+RUN yum install jq -y
+RUN jq --version
+
+ENV LLAMA_LOCAL_MODEL=/var/llama-model.bin
+
+ARG LLAMA_EXTRA_ARGS=''
+ARG LLAMA_MODEL
+
+RUN sh -c ' if [ -z "$LLAMA_MODEL" ]; then echo "LLAMA_MODEL build-arg is mandatory"; exit 1; fi'
+
+COPY run-llama.sh /usr/bin/
+RUN chmod o+x "/usr/bin/run-llama.sh"
+
+COPY "$LLAMA_MODEL" "$LLAMA_LOCAL_MODEL"
+
+COPY bootstrap /var/runtime/bootstrap
+RUN chmod 755 /var/runtime/bootstrap
+
+COPY function.sh /var/task/function.sh
+RUN chmod 755 /var/task/function.sh
+
+WORKDIR /var/task
+
+CMD [ "function.sh.handler" ]

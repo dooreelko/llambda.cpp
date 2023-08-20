@@ -1,0 +1,5 @@
+FROM llama.base
+
+ENV LLAMA_BIN=/usr/bin/llama.generate
+
+COPY --from=llama.build /llama.cpp/zig-out/bin/main "$LLAMA_BIN"
