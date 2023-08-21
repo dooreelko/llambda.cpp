@@ -19,18 +19,18 @@ if [ -z "$MODEL" ]; then
     exit 1
 fi
 
-docker build --file Dockerfile.build --tag llama.build ./llama.cpp
+podman build --build-arg NO_CACHE="$RANDOM" --file Dockerfile.build --tag llama.build -v "$PWD":/work:rw .
 
-docker build --build-arg LLAMA_MODEL="$MODEL" --file Dockerfile.base --tag llama.base .
+podman build --build-arg LLAMA_MODEL="$MODEL" --file Dockerfile.base --tag llama.base .
 
 IMAGES=(Dockerfile.embed Dockerfile.generate)
 
 for f in "${IMAGES[@]}"; do
     TAG="llama.${f##*.}"
-    docker build --file "$f" --tag "$TAG" ./empty
+    podman build --file "$f" --tag "$TAG" ./empty
     if [ -n "$ECR" ]; then
         ECR_TAG="$ECR:$TAG"
-        docker tag "$TAG:latest" "$ECR_TAG"
-        docker push "$ECR_TAG"
+        podman tag "$TAG:latest" "$ECR_TAG"
+        podman push "$ECR_TAG"
     fi
 done

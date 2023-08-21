@@ -3,7 +3,7 @@
 ## Deployment
 
 1. Create an ECR repo and log in into it using docker. Something like
-   `aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin XXXXXXXX.dkr.ecr.eu-central-1.amazonaws.com`
+   `aws ecr get-login-password --region eu-central-1 | podman login --username AWS --password-stdin XXXXXXXX.dkr.ecr.eu-central-1.amazonaws.com`
 
 2. create an `.ecr-env` file containing target repo in form of
 

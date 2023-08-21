@@ -5,9 +5,14 @@ RUN yum install git tar xz -y
 RUN curl https://ziglang.org/builds/zig-linux-x86_64-0.12.0-dev.141+ddf5859c2.tar.xz > /zig.tar.xz 
 RUN mkdir /zig && tar -xf /zig.tar.xz --strip-components 1 -C /zig
 
-RUN cd / && git clone https://github.com/ggerganov/llama.cpp.git
+# RUN cd / && git clone https://github.com/ggerganov/llama.cpp.git
 
-WORKDIR /llama.cpp
+WORKDIR /work/llama.cpp
 
-RUN PATH=$PATH:/zig zig build -Doptimize=ReleaseFast -Dtarget=x86_64-linux-gnu -Dcpu=x86_64+aes+avx+avx2+bmi+bmi2+cmov+cx16+cx8+f16c+fma+fsgsbase+fxsr+invpcid+mmx+movbe+nopl+pclmul+popcnt+sse+sse2+sse3+sse4_1+sse4_2+ssse3+xsave+xsaveopt
+ARG CPU_OPTS=x86_64+aes+avx+avx2+bmi+bmi2+cmov+cx16+cx8+f16c+fma+fsgsbase+fxsr+invpcid+mmx+movbe+nopl+pclmul+popcnt+sse+sse2+sse3+sse4_1+sse4_2+ssse3+xsave+xsaveopt
 
+ENV PATH=$PATH:/zig
+
+ARG NO_CACHE=0
+
+RUN zig build -Doptimize=ReleaseFast -Dtarget=x86_64-linux-gnu -Dcpu=$CPU_OPTS
