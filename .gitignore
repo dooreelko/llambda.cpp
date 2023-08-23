@@ -1,2 +1,4 @@
 *bin
 .ecr-env
+build
+runone.sh

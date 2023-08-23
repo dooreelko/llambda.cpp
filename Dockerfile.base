@@ -10,9 +10,6 @@ ARG LLAMA_MODEL
 
 RUN sh -c ' if [ -z "$LLAMA_MODEL" ]; then echo "LLAMA_MODEL build-arg is mandatory"; exit 1; fi'
 
-COPY run-llama.sh /usr/bin/
-RUN chmod o+x "/usr/bin/run-llama.sh"
-
 COPY "$LLAMA_MODEL" "$LLAMA_LOCAL_MODEL"
 
 COPY bootstrap /var/runtime/bootstrap
