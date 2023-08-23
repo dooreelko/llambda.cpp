@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -exuo pipefail
+set -exo pipefail
 
 # Initialization - load function handler
 source $LAMBDA_TASK_ROOT/"$(echo $_HANDLER | cut -d. -f1).sh"
@@ -18,6 +18,15 @@ do
   # Run the handler function from the script
   RESPONSE=$($(echo "$_HANDLER" | cut -d. -f3) "$EVENT_DATA") # -f3 gets the handler function name from function.sh.handler
 
+  ERR=''
+  if echo "$RESPONSE" | grep errorMessage ; then
+    ERR=$(echo "$RESPONSE" | jq -r .errorMessage)
+  fi
+
   # Send the response
-  curl -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response"  -d "$RESPONSE"
+  if [ -z "$ERR" ]; then
+    curl -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
+  else
+    curl -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/error" -d "$RESPONSE"
+  fi
 done
