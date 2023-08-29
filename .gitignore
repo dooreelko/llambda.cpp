@@ -2,3 +2,5 @@
 .ecr-env
 build
 runone.sh
+dist
+__pycache__
