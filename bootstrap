@@ -12,6 +12,18 @@ do
   # Get an event. The HTTP request will block until one is received
   EVENT_DATA=$(curl -sS -LD "$HEADERS" -X GET "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
 
+  if echo "$EVENT_DATA" | grep requestContext; then 
+    # we're called via Lambda URL
+
+    CT=$(echo "$EVENT_DATA" | jq -r '.headers["content-type"]')
+
+    if [ "$CT" = 'application/json' ]; then
+      EVENT_DATA=$(echo "$EVENT_DATA" | jq -r .body)
+    else
+      EVENT_DATA=$(echo "$EVENT_DATA" | jq -r .body | base64 -d)
+    fi
+  fi
+
   # Extract request ID by scraping response headers received above
   REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
 
@@ -25,7 +37,7 @@ do
 
   # Send the response
   if [ -z "$ERR" ]; then
-    curl -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
+    curl -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$(echo "$RESPONSE" | tr -C '[:print:]' ' ' | jq '. | tojson')"
   else
     curl -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/error" -d "$RESPONSE"
   fi
