@@ -1,5 +1,6 @@
 import os
 import sys
+from random import randrange
 
 from typing import Any, Dict, List, Optional
 
@@ -7,20 +8,23 @@ from langchain.embeddings.base import Embeddings
 from pydantic import BaseModel, Extra, root_validator
 
 import asyncio
-import requests
+import aiohttp
 
 class LlambdaCppEmbeddings(BaseModel, Embeddings):
-    """llama.cpp embedding models.
+    """llambda.cpp embedding model.
 
-    To use, you should have the llama-cpp-python library installed, and provide the
-    path to the Llama model as a named parameter to the constructor.
-    Check out: https://github.com/abetlen/llama-cpp-python
+    This utilises llama.cpp model deployed as an AWS Lambda.
+    Check out: https://github.com/dooreelko/llambda.cpp
 
     Example:
         .. code-block:: python
 
             from langchain.embeddings import LlambdaCppEmbeddings
-            llama = LlambdaCppEmbeddings(embed_url="https://address.of.the.lambda/embed", api_key="foobar")
+            llama = LlambdaCppEmbeddings(embed_url="https://xxxxxxxxx.lambda-url.eu-central-1.on.aws/", api_key="foobar")
+            llama.embed_query('hi how are ')
+
+            the api_key is an optional parameter and, if omitted in constructor, will
+            be read from LLAMA_API_KEY env variable. If missing also there - error.
     """
     embed_url: str
 
@@ -42,34 +46,46 @@ class LlambdaCppEmbeddings(BaseModel, Embeddings):
 
         return values
 
-    def _run_one(self, text: str) -> List[float]:
-        response = requests.post(self.embed_url, 
+    async def _run_one_async(self, session: aiohttp.ClientSession, text: str, idx: int, dones: List[int], num_tasks: int) -> List[float]:
+        async with session.post(self.embed_url,
             json={
                 "prompt": text,
                 "n-generate": 10,
                 "api-key": self.api_key
             }, 
-            headers={"content-type": "application/json"})
+            headers={"content-type": "application/json"}) as response:        
+            if not response.ok:
+                print(response.headers, file=sys.stderr)
+                response.raise_for_status()
 
-        if not response.ok:
-            print(response.headers, file=sys.stderr)
-            response.raise_for_status()
+            result = await response.json()
+            dones.append(idx)
+            print(f"done {int(len(dones)/num_tasks*100)}%", file=sys.stderr, end='\r', flush=True)
 
-        return response.json()
+            return result
+        
+    async def _embed_multi(self, texts: List[str]) -> List[List[float]]:
+
+        # 15 minutes max lambda execution duration
+        # while the aiohttp default is 300s
+        timeout = aiohttp.ClientTimeout(total=15*60) 
+        session = aiohttp.ClientSession(timeout=timeout)
+        dones = []
+        tasks = [self._run_one_async(session, text, idx, dones, len(texts)) for idx,text in enumerate(texts)]
+
+        results = await asyncio.gather(*tasks)
+
+        await session.close()
+
+        return results
+
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-            return [self._run_one(text) for text in texts]
-    
-    # async def embed_documents(self, texts: List[str]) -> List[List[float]]:
-    #     async with asyncio.TaskGroup() as tg:
-    #         tasks = [tg.create_task(self._run_one([text])) for text in texts]
+        print(f"multi embed {len(texts)}", file=sys.stderr)
 
-    #         loop = asyncio.get_event_loop()
-    #         results = loop.run_until_complete(asyncio.wait(tasks))
-    #         loop.close()
-
-    #         return results
-    
+        return asyncio.run(self._embed_multi(texts))
+        
     def embed_query(self, text: str) -> List[float]:
+        print("single embed", file=sys.stderr)
 
-        return self._run_one(text)
+        return asyncio.run(self._embed_multi([text]))[0]

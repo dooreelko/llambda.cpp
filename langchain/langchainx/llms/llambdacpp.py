@@ -19,13 +19,17 @@ class LlambdaCpp(LLM):
 
     To use, you should provide the
     url to the Llambda model as a named parameter to the constructor.
-    Check out: https://github.com/dooreelko/llambdacpp
+    Check out: https://github.com/dooreelko/llambda.cpp
 
     Example:
         .. code-block:: python
 
-            from langchain.llms import LlambdaCpp
+            from langchainx.llms import LlambdaCpp
             llm = LlambdaCpp(generate_url="https://xxxxxxxxx.lambda-url.eu-central-1.on.aws/", api_key="foobar")
+            llm('hi how are ')
+
+            the api_key is an optional parameter and, if omitted in constructor, will
+            be read from LLAMA_API_KEY env variable. If missing also there - error.
     """
 
     generate_url: str
